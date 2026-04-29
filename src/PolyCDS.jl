@@ -49,8 +49,12 @@ export Poly
 # Component modules.
 include("Vocabulary.jl")
 include("Polynomials.jl")
-include("Carrier.jl")
-include("Bicomodule.jl")
+include("Protocol.jl")          # IR types + per-disease Protocol consts
+include("ProtocolCompile.jl")   # compile_protocol → CompiledProtocol; D{k}_compiled
+include("ProtocolDoc.jl")       # markdown ProtocolDoc parser → Protocol struct
+include("Carrier.jl")           # A_Dk_carrier sourced from D{k}_compiled
+include("Bicomodule.jl")        # bicomodules built on top of compiled output
+include("Render.jl")            # text-mode wiring-diagram prints
 include("Patient.jl")
 include("Simulate.jl")
 

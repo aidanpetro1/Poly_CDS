@@ -33,6 +33,23 @@ const p_o2b = monomial(FinPolySet([:o2b]), Results)
 const p_o2c = monomial(FinPolySet([:o2c]), Results)
 
 # ============================================================
+# Intake-stage polynomial  (v1.6)
+# ============================================================
+#
+# The intake stage's observation polynomial is orthogonal to the per-
+# disease workup polynomials — chief complaint isn't asked again during
+# workup, and workup observations aren't asked during intake. In the
+# compose-based architecture (`A_intake ⊙ A_workup_joint`), the two
+# polynomials underpin different bicomodules whose only contact is
+# through the middle comonoid (`S_workup_joint`).
+
+"Chief-complaint polynomial: `y^|CCResults|` with one position labeled `:chief_complaint`."
+const p_chief_complaint = monomial(FinPolySet([:chief_complaint]), CCResults)
+
+"Intake-stage observation polynomial. v1.6: alias for `p_chief_complaint` (single-observation intake)."
+const p_intake = p_chief_complaint
+
+# ============================================================
 # Per-disease observation polynomials via `coproduct` (flat tags)
 # ============================================================
 

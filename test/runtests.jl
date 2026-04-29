@@ -1,8 +1,12 @@
 """
-    test/runtests.jl  (v1.1)
+    test/runtests.jl  (v1.2)
 
-Tests for PolyCDS v1.1: per-disease cofree-S bicomodules + thin protocol-P
-+ joint via Bicomodule ⊗. Uses validate_*_detailed companions throughout
+Tests for PolyCDS v1.2: per-disease cofree-S bicomodules + free protocol-P
+(length-≥2 composites distinct) + joint via Bicomodule ⊗. Under v1.2's
+free-P, `validate_bicomodule_detailed` is a NON-TRIVIAL coherence proof
+on each guideline (v1.1's discrete-P made the axioms hold vacuously).
+
+Uses validate_*_detailed companions throughout
 (per the v0.2.0 design — see project_polycds_coherence.md).
 
 Run with:
@@ -26,7 +30,7 @@ import .PolyCDS:
     Patient_D1, Patient_D2, Patient_neither,
     simulate
 
-@testset "PolyCDS v1.1" begin
+@testset "PolyCDS v1.2" begin
 
     @testset "Polynomial structure" begin
         # Atomic obs are y² each
@@ -44,26 +48,37 @@ import .PolyCDS:
         @test cardinality(A_carrier.positions) == Finite(25)
     end
 
-    @testset "Comonoid laws hold (sub-cofree S, discrete P, both per-disease)" begin
+    @testset "Comonoid laws hold (sub-cofree S, free-P, both per-disease)" begin
         @test validate_comonoid(S_D1)
         @test validate_comonoid(S_D2)
         @test validate_comonoid(P_D1)
         @test validate_comonoid(P_D2)
     end
 
-    @testset "Per-disease bicomodule laws" begin
-        # In v1.1 with discrete P, the bicomodule axioms hold trivially.
-        # The full "bicomodule axiom = guideline coherence" reading
-        # (project_polycds_coherence.md) returns when P is upgraded to
-        # a free protocol-category in v1.2.
+    @testset "Per-disease bicomodule laws (non-trivial under free-P)" begin
+        # In v1.2 with free-P (length-≥2 composites distinct), the
+        # bicomodule compatibility axiom does substantive work — a
+        # passing validate_bicomodule is the "guideline coherence"
+        # certificate (project_polycds_coherence.md).
         @test validate_bicomodule(A_D1_bicomodule)
         @test validate_bicomodule(A_D2_bicomodule)
     end
 
+    # v1.2 free-P specific tests: shape, sharp_R well-definedness, and
+    # the codomain-matching disambiguation rule.
+    include(joinpath(@__DIR__, "test_v12_freep.jl"))
+
+    # v1.4 ProtocolDoc parser — round-trip from markdown + parse-time
+    # cross-reference validation.
+    include(joinpath(@__DIR__, "test_v14_protocoldoc.jl"))
+
+    # v1.5 viz layer — Mermaid flowcharts + Catlab WiringDiagrams.
+    include(joinpath(@__DIR__, "test_v15_viz.jl"))
+
     # Joint bicomodule via formal Bicomodule ⊗ — A_joint is a module-level
     # const constructed in Bicomodule.jl as parallel(A_D1_bicomodule,
     # A_D2_bicomodule). Adds ~9s to the test run (construction ≈ 1.4s,
-    # validation ≈ 7.7s on v1.1 carriers); see comment in Bicomodule.jl.
+    # validation ≈ 7.7s on v1.1 carriers; v1.2 free-P costs are similar).
     include(joinpath(@__DIR__, "test_v11_joint_bicomodule.jl"))
 
     @testset "Patient_D1 trajectory (sequential): confirms D1, rules out D2" begin

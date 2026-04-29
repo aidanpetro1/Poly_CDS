@@ -1,0 +1,30 @@
+# Julia
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+/Manifest.toml
+/Manifest-*.toml
+deps/deps.jl
+deps/build.log
+
+# Documentation builds
+/docs/build/
+/docs/site/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.\#*
+\#*\#
+
+# Local sandboxes / scratch
+scratch/
+tmp/

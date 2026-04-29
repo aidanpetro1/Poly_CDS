@@ -1,0 +1,22 @@
+CompiledProtocol  (5 phenotypes, 4 trees in S, 4 orders / 10 morphisms in P)
+
+Order graph — 4 edges:
+  order_o1a:
+    └─→ disease_D1_absent
+    └─→ order_o1b
+  order_o1b:
+    └─→ disease_D1_absent
+    └─→ disease_D1_present
+
+Phenotypes (with direction tables):
+  a_D1_initial             ⇒ order_o1a               (5 directions)
+      seq_neg          → a_D1_absent_via_o1a      ⇒ disease_D1_absent
+      seq_pos          → a_D1_pending             ⇒ order_o1b
+      panel_pos_neg    → a_D1_absent_via_o1b      ⇒ disease_D1_absent
+      panel_pos_pos    → a_D1                     ⇒ disease_D1_present
+  a_D1_absent_via_o1a      ⇒ disease_D1_absent       (1 direction)  (terminal)
+  a_D1_pending             ⇒ order_o1b               (3 directions)
+      seq_neg          → a_D1_absent_via_o1b      ⇒ disease_D1_absent
+      seq_pos          → a_D1                     ⇒ disease_D1_present
+  a_D1_absent_via_o1b      ⇒ disease_D1_absent       (1 direction)  (terminal)
+  a_D1                     ⇒ disease_D1_present      (1 direction)  (terminal)

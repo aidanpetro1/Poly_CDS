@@ -91,10 +91,11 @@ const JOINT_TIME_BUDGET_SEC = 120.0
 
     # ----------------------------------------------------------------
     # 3. Bicomodule axioms hold on the joint.
-    #    Under v1.1 (discrete P_D1, P_D2 ⇒ discrete P_joint) the LEFT
-    #    axioms still have real work because S_joint = S_D1 ⊗ S_D2
-    #    has cofree-S on each side with nontrivial duplicator/counit
-    #    structure. validate_bicomodule_detailed walks these.
+    #    Under v1.2 (free-P_D1, free-P_D2 ⇒ free P_joint with length-≥2
+    #    composites on each side) the LEFT axioms exercise the cofree-S
+    #    duplicator/counit structure AND the right-side and compatibility
+    #    axioms have real P-morphism content. validate_bicomodule_detailed
+    #    is a non-trivial coherence proof on the joint guideline.
     # ----------------------------------------------------------------
     @testset "validate_bicomodule on joint" begin
         local v

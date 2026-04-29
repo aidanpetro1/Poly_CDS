@@ -18,16 +18,48 @@
 #       v1.1 protocol — headroom for a 2-of-3-confirmation extension.
 #   * Each observation has two results: `:neg` and `:pos`.
 #   * Per-disease orders: each disease has its own order vocabulary
-#     (per-disease P_Dk in Bicomodule.jl). 4 orders per disease:
-#     two `order_*` requests + `no_further_workup_Dk` + `refer_Dk`.
+#     (per-disease P_Dk in Bicomodule.jl). v1.2 splits the lumped
+#     `:no_further_workup_Dk` terminal into clinically-distinct
+#     `:disease_Dk_present` and `:disease_Dk_absent` so the free-P
+#     length-2 composites `o1a → o1b → present/absent` are distinct
+#     P-morphisms — required for `sharp_R` to be well-defined under
+#     free-P (see project_polycds_coherence.md).
 
-"The two possible result values for every observation in v1.1."
+"The two possible result values for every per-disease observation in v1.1+."
 const Results = FinPolySet([:neg, :pos])
+
+# ============================================================
+# Intake-stage vocabulary  (v1.6 — chief complaint)
+# ============================================================
+#
+# v1.6 introduces an intake stage as a separate bicomodule (A_intake)
+# composed with the workup-joint bicomodule via `compose(::Bicomodule,
+# ::Bicomodule)` in Poly.jl. At intake the patient is asked for their
+# chief complaint (CC); the response selects which diseases enter the
+# active workup.
+#
+# CC has its own value set — the symptom alphabet — distinct from the
+# {:neg, :pos} `Results` used for per-disease observations. The CC
+# observation lives in `p_chief_complaint` (Polynomials.jl), NOT in
+# any per-disease p_Dk_obs polynomial. CC stays orthogonal to the
+# workup observation polynomials.
+
+"Chief-complaint value set — the symptom alphabet patients walk in with."
+const CCResults = FinPolySet([
+    :chest_pain,    # → activates D1 only
+    :abd_pain,      # → activates D2 only
+    :dyspnea,       # → activates both D1 and D2
+    :fatigue,       # → activates both D1 and D2
+    :well_visit,    # → activates neither (routine check)
+])
+
+"Intake-stage observation symbols. Single observation in v1.6 (CC); future-proofed for additions like vitals."
+const Intake_observations = [:chief_complaint]
 
 "Observation names — positions of the per-observation polynomials."
 const D1_observations = [:o1a, :o1b]
 const D2_observations = [:o2a, :o2b, :o2c]
-const All_observations = vcat(D1_observations, D2_observations)
+const All_observations = vcat(Intake_observations, D1_observations, D2_observations)
 
 """
     event_symbol(obs::Symbol, r::Symbol) -> Symbol
@@ -47,22 +79,45 @@ The order whose execution would produce an observation event for `obs`.
 """
 order_for(obs::Symbol) = Symbol("order_$(obs)")
 
+"""
+    obs_from_order(o::Symbol) -> Symbol
+
+Inverse of `order_for`: strip the `order_` prefix.
+`obs_from_order(:order_o1a) = :o1a`. Errors if `o` doesn't start with `order_`.
+"""
+function obs_from_order(o::Symbol)
+    s = String(o)
+    startswith(s, "order_") ||
+        error("obs_from_order: $o is not a 'order_*' symbol")
+    return Symbol(s[7:end])
+end
+
 # ============================================================
 # Per-disease order vocabularies
 # ============================================================
 #
-# In v1.1 each disease has its own P_Dk protocol-category (NOT a shared
-# discrete P). Per-disease orders are: two "request observation"
-# orders for the disease's protocol-active observations, plus
-# `no_further_workup_Dk` and `refer_Dk` exit actions. The order vocabulary
-# defines the OBJECTS of P_Dk; the morphisms (the planned pathway) are
-# defined in Bicomodule.jl.
+# In v1.2 each disease has its own free-P protocol-category. Per-disease
+# orders are the OBJECTS of P_Dk: two "request observation" orders plus
+# two clinically-distinct terminal conclusions (`disease_Dk_present` and
+# `disease_Dk_absent`). The morphisms (the planned pathway, with length-2
+# composites kept distinct) are defined in Bicomodule.jl.
+#
+# Why split the terminal: under free-P, `sharp_R(x, a, e)` extends `a`'s
+# S-path by length(e) more steps, and the rule used to disambiguate
+# competing extensions is "match cod(e)'s recommendation." A single
+# lumped `:no_further_workup_Dk` would collapse the cods of competing
+# length-2 P-morphisms (e.g. `o1a → o1b → present` and
+# `o1a → o1b → absent`), making `sharp_R` ambiguous. Splitting by
+# clinical conclusion (present/absent) restores well-definedness.
+#
+# `:refer_Dk` is still deferred — no phenotype currently recommends a
+# referral so it would be structurally meaningless.
 
-"D1's order vocabulary — objects of P_D1. v1.1 drops :refer_D1 (no refer-recommending phenotype yet); deferred to v1.2."
-const D1_orders = [:order_o1a, :order_o1b, :no_further_workup_D1]
+"D1's order vocabulary — objects of P_D1 (free protocol-category in v1.2)."
+const D1_orders = [:order_o1a, :order_o1b, :disease_D1_present, :disease_D1_absent]
 
-"D2's order vocabulary — objects of P_D2. Same simplification."
-const D2_orders = [:order_o2a, :order_o2b, :no_further_workup_D2]
+"D2's order vocabulary — objects of P_D2 (parallel structure)."
+const D2_orders = [:order_o2a, :order_o2b, :disease_D2_present, :disease_D2_absent]
 
 # ============================================================
 # Per-disease phenotypes (positions of A_Dk_carrier)

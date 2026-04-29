@@ -26,21 +26,12 @@ using Printf: @printf
 # ============================================================
 # Order/obs translation
 # ============================================================
+#
+# `obs_from_order` lives in Vocabulary.jl (it's a vocabulary-level helper
+# now that ProtocolCompile.jl also needs it).
 
-"""
-    obs_from_order(o::Symbol) -> Symbol
-
-Inverse of `order_for`: strip the `order_` prefix.
-"""
-function obs_from_order(o::Symbol)
-    s = String(o)
-    startswith(s, "order_") ||
-        error("obs_from_order: $o is not a 'order_*' symbol")
-    return Symbol(s[7:end])
-end
-
-"True if `o` is `:no_further_workup_*` — an exit recommendation."
-is_exit_order(o::Symbol) = startswith(String(o), "no_further_workup")
+"True if `o` is `:disease_D{k}_present` or `:disease_D{k}_absent` — a clinical-conclusion (exit) recommendation. Updated for v1.2's split terminal vocabulary; replaces v1.1's lumped `no_further_workup_*` check."
+is_exit_order(o::Symbol) = startswith(String(o), "disease_")
 
 # ============================================================
 # Halt detection
@@ -70,15 +61,18 @@ _is_joint_terminal(state::Tuple{Symbol,Symbol}) =
 Read the joint right_coaction's `(:stay, :stay)` recommendation at `state`.
 Returns `(p_D1, p_D2)` where each component is the per-disease P-position
 the protocol recommends emitting while staying in `state`, OR `nothing`
-if that side's recommendation is an exit order (`:no_further_workup_*`,
-i.e. the side has reached a terminal phenotype).
+if that side's recommendation is a clinical-conclusion exit order
+(`:disease_Dk_present` or `:disease_Dk_absent`, i.e. the side has reached
+a terminal phenotype).
 
 Formally load-bearing: the recommendation comes from the bicomodule's
 right coaction, not from hand-written tables.
 """
 function joint_recommendation(state::Tuple{Symbol,Symbol})
     _, joint_jbar = A_joint.right_coaction.on_positions.f(state)
-    p_D1, p_D2 = joint_jbar[(:stay, :stay)]
+    # v1.3: per-disease A-directions are path tuples; the joint stay-stay
+    # direction is the pair of empty paths.
+    p_D1, p_D2 = joint_jbar[((), ())]
     return (
         is_exit_order(p_D1) ? nothing : p_D1,
         is_exit_order(p_D2) ? nothing : p_D2,
@@ -115,21 +109,21 @@ function _advance_disease(disease::Symbol, state::Symbol, patient::Patient, mode
     mbar_L = disease == :D1 ? mbar_L_D1 : mbar_L_D2
     mbar_R = disease == :D1 ? mbar_R_D1 : mbar_R_D2
 
-    # Issue the screen — the `:stay` slot of the per-disease right coaction.
-    screen_order = mbar_R[state][:stay]
+    # Issue the screen — the empty-path (stay) slot of the right coaction.
+    screen_order = mbar_R[state][()]
     screen_obs = obs_from_order(screen_order)
     screen_result = respond(patient, screen_obs)
 
-    # Sequential, OR panel-degenerated-on-screen-neg → single :seq_* direction.
+    # Sequential, OR panel-degenerated-on-screen-neg → single length-1 direction.
     if mode == :sequential || screen_result == :neg
         next_state = mbar_L[state][(screen_result,)]
         return (next_state, [screen_obs], [screen_result])
     end
 
-    # Panel + screen-positive → length-2 :panel_pos_* direction.
+    # Panel + screen-positive → length-2 path direction.
     # Issue the confirmation order in the same step.
     intermediate_state = mbar_L[state][(screen_result,)]
-    confirm_order = mbar_R[intermediate_state][:stay]
+    confirm_order = mbar_R[intermediate_state][()]
     confirm_obs = obs_from_order(confirm_order)
     confirm_result = respond(patient, confirm_obs)
 
@@ -144,13 +138,13 @@ end
 """
     TrajectoryStep
 
-One step of a v1.1 joint-bicomodule trajectory. Six columns:
+One step of a joint-bicomodule trajectory. Six columns:
 
   * `step::Int` — index. Step 0 is the initial state with no transitions yet;
     step k>0 records the joint state AFTER transition k.
   * `joint_pos::Tuple{Symbol,Symbol}` — the joint phenotype at this step.
   * `joint_order::Tuple{Union{Symbol,Nothing}, Union{Symbol,Nothing}}` —
-    the right_coaction's `(:stay, :stay)` recommendation at `joint_pos`.
+    the right_coaction's stay-stay (empty-path) recommendation at `joint_pos`.
     Each side is `nothing` when that side is terminal.
   * `obs_issued::Tuple{Vector{Symbol}, Vector{Symbol}}` — the obs lists
     issued during the transition that LED to this step. 0/1/2 obs per side.
@@ -274,22 +268,29 @@ _or_dash(x::Nothing) = "—"
 _or_dash(x::Symbol)  = string(x)
 _listfmt(xs::Vector{Symbol}) = isempty(xs) ? "—" : join(xs, "+")
 
+"Per-side A-direction label derived from the result-list at that side. v1.4 enrichment — uses pretty_label over the path tuple."
+_dir_label(results::Vector{Symbol}) = pretty_label(Tuple(results))
+
 """
     print_trajectory(trajectory; io=stdout)
 
-Render a trajectory as a readable table. Six columns matching
-`TrajectoryStep`'s schema, with `nothing` entries shown as `—` and
-empty obs/result lists shown as `—`.
+Render a trajectory as a readable table. v1.4: seven columns — adds a
+`dir (D1│D2)` column showing the per-side A-direction labels
+(`:stay`, `:seq_pos`, `:panel_pos_pos`, …) derived via `pretty_label`
+from the results path tuple at each step.
+
+`nothing` entries shown as `—`; empty obs/result lists shown as `—`.
 """
 function print_trajectory(trajectory::Vector{TrajectoryStep}; io=stdout)
-    println(io, "step │ joint_pos                                          │ joint_order                          │ obs (D1│D2)            │ result (D1│D2)         │ mode")
-    println(io, "─────┼────────────────────────────────────────────────────┼──────────────────────────────────────┼────────────────────────┼────────────────────────┼────────────")
+    println(io, "step │ joint_pos                                          │ joint_order                          │ dir (D1│D2)                  │ obs (D1│D2)            │ result (D1│D2)         │ mode")
+    println(io, "─────┼────────────────────────────────────────────────────┼──────────────────────────────────────┼──────────────────────────────┼────────────────────────┼────────────────────────┼────────────")
     for s in trajectory
         pos = string(s.joint_pos)
         ord = "(" * _or_dash(s.joint_order[1]) * ", " * _or_dash(s.joint_order[2]) * ")"
+        dir = string(_dir_label(s.result[1])) * " │ " * string(_dir_label(s.result[2]))
         obs = _listfmt(s.obs_issued[1]) * " │ " * _listfmt(s.obs_issued[2])
         res = _listfmt(s.result[1]) * " │ " * _listfmt(s.result[2])
-        @printf(io, " %2d  │ %-50s │ %-36s │ %-22s │ %-22s │ %s\n",
-                s.step, pos, ord, obs, res, s.mode)
+        @printf(io, " %2d  │ %-50s │ %-36s │ %-28s │ %-22s │ %-22s │ %s\n",
+                s.step, pos, ord, dir, obs, res, s.mode)
     end
 end
