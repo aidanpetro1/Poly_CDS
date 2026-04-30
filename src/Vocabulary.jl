@@ -158,3 +158,35 @@ const A_D2_absent_states = [:a_D2_absent_via_o2a, :a_D2_absent_via_o2b]
 "Convenience: is this per-disease phenotype terminal (no further workup expected)?"
 is_terminal_D1(s::Symbol) = s == :a_D1 || s in A_D1_absent_states
 is_terminal_D2(s::Symbol) = s == :a_D2 || s in A_D2_absent_states
+
+# ============================================================
+# Active-workup phenotypes  (v1.6.B PR 2 — DDx projection)
+# ============================================================
+#
+# A disease d is "on the differential" at phenotype s_d iff s_d is
+# still being actively differentiated — neither confirmed (a_d) nor
+# ruled out (a_d_absent_via_*). The active set is exactly initial +
+# pending (per the settled DDx-projection reading, foundations doc §30):
+#
+#   DDx(h, (s_D1, s_D2)) = { d : s_d ∈ active_workup_states(d) }
+#
+# Confirmed phenotypes go to the active-problem-list (h via realize),
+# not the differential; ruled-out phenotypes leave both.
+
+"D1 phenotypes still actively being differentiated."
+const A_D1_active_workup = [:a_D1_initial, :a_D1_pending]
+
+"D2 phenotypes still actively being differentiated."
+const A_D2_active_workup = [:a_D2_initial, :a_D2_pending]
+
+"""
+    active_workup_states(d::Symbol) -> Vector{Symbol}
+
+The per-disease A-phenotypes that are still on the differential —
+neither confirmed nor ruled out. Used by `DDx` (DDx.jl).
+"""
+function active_workup_states(d::Symbol)
+    d === :D1 && return A_D1_active_workup
+    d === :D2 && return A_D2_active_workup
+    error("active_workup_states: unknown disease $(d)")
+end

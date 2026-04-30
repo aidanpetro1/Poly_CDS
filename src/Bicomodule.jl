@@ -285,7 +285,7 @@ const A_D2_bicomodule = Bicomodule(
 )
 
 # ============================================================
-# Joint bicomodule  —  A_joint  =  A_D1_bicomodule  ⊗  A_D2_bicomodule
+# Joint bicomodule  —  A_∅  =  A_D1_bicomodule  ⊗  A_D2_bicomodule
 # ============================================================
 #
 # The formal joint bicomodule, the categorical artifact representing
@@ -296,10 +296,10 @@ const A_D2_bicomodule = Bicomodule(
 # `subst(carrier, carrier)` would be combinatorially intractable.
 
 """
-    A_joint :: Bicomodule
+    A_∅ :: Bicomodule
 
-The joint bicomodule `A_joint : (S_D1 ⊗ S_D2) ⇸ (P_D1 ⊗ P_D2)`,
+The joint bicomodule `A_∅ : (S_D1 ⊗ S_D2) ⇸ (P_D1 ⊗ P_D2)`,
 constructed as the formal `Bicomodule` tensor product of the
 per-disease bicomodules. Categorical ground truth of the joint CDS.
 """
-const A_joint = parallel(A_D1_bicomodule, A_D2_bicomodule)
+const A_∅ = parallel(A_D1_bicomodule, A_D2_bicomodule)

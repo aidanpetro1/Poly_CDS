@@ -35,7 +35,7 @@ import .PolyCDS:
     markdown_protocol, markdown_order_graph, markdown_overview,
     catlab_bicomodule, catlab_joint, render_catlab_to_dot,
     print_trajectory, simulate,
-    D1_protocol, D1_compiled, A_joint, Patient_D1
+    D1_protocol, D1_compiled, A_∅, Patient_D1
 
 const OUT_DIR = joinpath(@__DIR__, "..", "renders")
 isdir(OUT_DIR) || mkpath(OUT_DIR)
@@ -66,7 +66,7 @@ _write("01_d1_protocol_tree.txt", io -> print_protocol(D1_protocol; io=io))
 _write("02_d1_compiled.txt", io -> print_compiled(D1_compiled; io=io))
 
 # 3. Joint bicomodule summary (ASCII)
-_write("03_joint_summary.txt", io -> print_joint(A_joint; io=io))
+_write("03_joint_summary.txt", io -> print_joint(A_∅; io=io))
 
 # 4. Per-disease bicomodule summary (ASCII)
 _write("04_d1_bicomodule.txt", io -> print_bicomodule(:D1; io=io))
@@ -84,7 +84,7 @@ _write_string("07_d1_overview.md", markdown_overview(D1_protocol, D1_compiled))
 _write("08_d1_bicomodule.dot", io -> render_catlab_to_dot(catlab_bicomodule(:D1); io=io))
 
 # 9. Catlab joint bicomodule (GraphViz DOT)
-_write("09_joint_bicomodule.dot", io -> render_catlab_to_dot(catlab_joint(A_joint); io=io))
+_write("09_joint_bicomodule.dot", io -> render_catlab_to_dot(catlab_joint(A_∅); io=io))
 
 # 10. Trajectory with the new dir column
 _write("10_patient_d1_panel_trajectory.txt",

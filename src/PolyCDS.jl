@@ -48,12 +48,18 @@ export Poly
 
 # Component modules.
 include("Vocabulary.jl")
+include("ProblemVocabulary.jl")  # v1.6.B — Σ_prob, Q_ops, ListState
 include("Polynomials.jl")
 include("Protocol.jl")          # IR types + per-disease Protocol consts
 include("ProtocolCompile.jl")   # compile_protocol → CompiledProtocol; D{k}_compiled
 include("ProtocolDoc.jl")       # markdown ProtocolDoc parser → Protocol struct
 include("Carrier.jl")           # A_Dk_carrier sourced from D{k}_compiled
 include("Bicomodule.jl")        # bicomodules built on top of compiled output
+include("History.jl")           # v1.6.B — patient-history category H (path + state-quotient views)
+include("Realize.jl")           # v1.6.B — cc_realize / realize maps for D1, D2
+include("Theta.jl")             # v1.6.B — derived S→H quotient functor Θ
+include("Fiber.jl")             # v1.6.B PR 2 — fiber predicate, ∫A, FiberedAssessment
+include("DDx.jl")               # v1.6.B PR 2 — DDx projection from ∫A
 include("Render.jl")            # text-mode wiring-diagram prints
 include("Patient.jl")
 include("Simulate.jl")

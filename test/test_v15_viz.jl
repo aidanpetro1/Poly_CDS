@@ -20,7 +20,7 @@ using .PolyCDS
 import .PolyCDS:
     mermaid_protocol, mermaid_order_graph,
     catlab_bicomodule, catlab_joint, render_catlab_to_dot,
-    D1_protocol, D2_protocol, D1_compiled, D2_compiled, A_joint
+    D1_protocol, D2_protocol, D1_compiled, D2_compiled, A_∅
 
 @testset "v1.5 — viz generators" begin
 
@@ -102,8 +102,8 @@ import .PolyCDS:
     # ----------------------------------------------------------------
     # 5. Catlab: joint diagram (parallel composition)
     # ----------------------------------------------------------------
-    @testset "catlab_joint(A_joint)" begin
-        d = catlab_joint(A_joint)
+    @testset "catlab_joint(A_∅)" begin
+        d = catlab_joint(A_∅)
         io = IOBuffer()
         render_catlab_to_dot(d; io=io)
         dot = String(take!(io))

@@ -3,10 +3,10 @@
 
 Regression test for the formal joint bicomodule
 
-    A_joint = A_D1_bicomodule  ⊗  A_D2_bicomodule
+    A_∅ = A_D1_bicomodule  ⊗  A_D2_bicomodule
             = parallel(A_D1_bicomodule, A_D2_bicomodule)
 
-`A_joint` is constructed at PolyCDS load time as a module-level `const`
+`A_∅` is constructed at PolyCDS load time as a module-level `const`
 (see Bicomodule.jl). This test asserts the construction stayed cheap,
 the joint shape is right, the lazy-cod path is exercised, and
 `validate_bicomodule_detailed` still passes on it.
@@ -37,7 +37,7 @@ using .PolyCDS.Poly:
     cardinality, Finite
 
 import .PolyCDS:
-    A_D1_bicomodule, A_D2_bicomodule, A_joint,
+    A_D1_bicomodule, A_D2_bicomodule, A_∅,
     A_D1_carrier, A_D2_carrier,
     S_D1, S_D2, P_D1, P_D2
 
@@ -49,15 +49,15 @@ const JOINT_TIME_BUDGET_SEC = 120.0
 @testset "v1.1 — formal joint bicomodule via ⊗" begin
 
     # ----------------------------------------------------------------
-    # 1. Type and shape sanity. A_joint is a module-level const, so
+    # 1. Type and shape sanity. A_∅ is a module-level const, so
     #    construction has already happened by the time we get here —
     #    if it had blown up, `using .PolyCDS` would have failed.
     # ----------------------------------------------------------------
     @testset "type / shape" begin
-        @test A_joint isa Bicomodule
+        @test A_∅ isa Bicomodule
 
         # Joint A carrier should have |A_D1| × |A_D2| = 5 × 5 = 25 positions.
-        @test cardinality(A_joint.carrier.positions) == Finite(25)
+        @test cardinality(A_∅.carrier.positions) == Finite(25)
 
         # The Poly.jl PR's marquee change: Lens.cod is now AbstractPolynomial
         # and the joint coactions' cods are LazySubst, not concrete Polynomial.
@@ -65,12 +65,12 @@ const JOINT_TIME_BUDGET_SEC = 120.0
         # still pass (Polynomial <: AbstractPolynomial) but t_construct/t_validate
         # below will catch it. We assert AbstractPolynomial rather than the
         # internal LazySubst type to avoid coupling to a Poly.jl name.
-        @test A_joint.left_coaction.cod  isa AbstractPolynomial
-        @test A_joint.right_coaction.cod isa AbstractPolynomial
+        @test A_∅.left_coaction.cod  isa AbstractPolynomial
+        @test A_∅.right_coaction.cod isa AbstractPolynomial
 
         # Joint duplicator cods — same story (per the PR's "gotchas" note).
-        @test A_joint.left_base.duplicator.cod  isa AbstractPolynomial
-        @test A_joint.right_base.duplicator.cod isa AbstractPolynomial
+        @test A_∅.left_base.duplicator.cod  isa AbstractPolynomial
+        @test A_∅.right_base.duplicator.cod isa AbstractPolynomial
     end
 
     # ----------------------------------------------------------------
@@ -80,13 +80,13 @@ const JOINT_TIME_BUDGET_SEC = 120.0
     #    that's ~1.4s, fine.
     # ----------------------------------------------------------------
     @testset "construction stays cheap" begin
-        local A_joint_2
+        local A_∅_2
         t_construct = @elapsed begin
-            A_joint_2 = parallel(A_D1_bicomodule, A_D2_bicomodule)
+            A_∅_2 = parallel(A_D1_bicomodule, A_D2_bicomodule)
         end
         @info "joint bicomodule constructed" t_construct
         @test t_construct < JOINT_TIME_BUDGET_SEC
-        @test A_joint_2 isa Bicomodule
+        @test A_∅_2 isa Bicomodule
     end
 
     # ----------------------------------------------------------------
@@ -100,14 +100,14 @@ const JOINT_TIME_BUDGET_SEC = 120.0
     @testset "validate_bicomodule on joint" begin
         local v
         t_validate = @elapsed begin
-            v = validate_bicomodule_detailed(A_joint)
+            v = validate_bicomodule_detailed(A_∅)
         end
         @info "joint bicomodule validated" t_validate
         @test t_validate < JOINT_TIME_BUDGET_SEC
 
         # validate_bicomodule_detailed returns a rich result; the unary
         # boolean form is the contract we assert on.
-        @test validate_bicomodule(A_joint)
+        @test validate_bicomodule(A_∅)
 
         # Surface the detailed result for log inspection.
         @info "validate_bicomodule_detailed result" v

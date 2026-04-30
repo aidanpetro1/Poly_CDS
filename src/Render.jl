@@ -145,7 +145,7 @@ function print_joint(joint::Bicomodule; io::IO=stdout)
     println(io, "      ", length(D2_compiled.A_states), " phenotypes, ",
                 length(D2_compiled.protocol_edges), " protocol edges")
     println(io)
-    println(io, "Categorical reading: A_joint = A_D1 ⊗ A_D2")
+    println(io, "Categorical reading: A_∅ = A_D1 ⊗ A_D2")
     println(io, "                            : (S_D1 ⊗ S_D2) ⇸ (P_D1 ⊗ P_D2)")
 end
 
@@ -363,7 +363,7 @@ end
     catlab_joint(joint::Bicomodule) -> WiringDiagram
 
 A WiringDiagram for the joint bicomodule
-`A_joint : (S_D1 ⊗ S_D2) ⇸ (P_D1 ⊗ P_D2)`. Two parallel boxes (A_D1
+`A_∅ : (S_D1 ⊗ S_D2) ⇸ (P_D1 ⊗ P_D2)`. Two parallel boxes (A_D1
 above, A_D2 below) with their respective S-inputs and P-outputs.
 Constructed directly so the two-port-per-side input/output structure
 is explicit; equivalent to `otimes(catlab_bicomodule(:D1),

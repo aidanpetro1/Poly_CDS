@@ -2,7 +2,7 @@
 # Simulation driver  (v1.1, joint-bicomodule)
 # ============================================================
 #
-# Drives the joint bicomodule `A_joint` (= A_D1_bicomodule ⊗ A_D2_bicomodule,
+# Drives the joint bicomodule `A_∅` (= A_D1_bicomodule ⊗ A_D2_bicomodule,
 # the formal Bicomodule tensor product from Poly.jl) until both per-disease
 # components reach a terminal phenotype.
 #
@@ -12,7 +12,7 @@
 # sides simultaneously). Per the v1.1 settled design, those two axes move
 # together.
 #
-# Recommendations come from `A_joint.right_coaction.on_positions` — formally
+# Recommendations come from `A_∅.right_coaction.on_positions` — formally
 # load-bearing, not hand-written. Routing uses the per-disease `mbar_L`
 # dicts directly (the joint left routing IS the Cartesian product of these,
 # but the per-disease lookup is in scope and equivalent).
@@ -51,7 +51,7 @@ _is_joint_terminal(state::Tuple{Symbol,Symbol}) =
     _is_per_disease_terminal(:D1, state[1]) && _is_per_disease_terminal(:D2, state[2])
 
 # ============================================================
-# Joint recommendation (via A_joint.right_coaction)
+# Joint recommendation (via A_∅.right_coaction)
 # ============================================================
 
 """
@@ -69,7 +69,7 @@ Formally load-bearing: the recommendation comes from the bicomodule's
 right coaction, not from hand-written tables.
 """
 function joint_recommendation(state::Tuple{Symbol,Symbol})
-    _, joint_jbar = A_joint.right_coaction.on_positions.f(state)
+    _, joint_jbar = A_∅.right_coaction.on_positions.f(state)
     # v1.3: per-disease A-directions are path tuples; the joint stay-stay
     # direction is the pair of empty paths.
     p_D1, p_D2 = joint_jbar[((), ())]
@@ -164,6 +164,29 @@ struct TrajectoryStep
     obs_issued::Tuple{Vector{Symbol}, Vector{Symbol}}
     result::Tuple{Vector{Symbol}, Vector{Symbol}}
     mode::Symbol
+    # ----------------------------------------------------------------
+    # v1.6.B PR 2 additions — H-fibration tracking
+    # ----------------------------------------------------------------
+    # `h` records the current problem-list H-state at this step. For
+    # legacy v1.x trajectories with no CC firing, h stays at ∅
+    # throughout (pure-vertical motion in ∫A's terms).
+    #
+    # `edge_kind` classifies the morphism into this step:
+    #   * :init       — step 0, no transition yet
+    #   * :cc_fire    — step 1 when a CC is provided; pure-horizontal
+    #                   from (∅, a_init) to (cc_realize(c), a_init)
+    #   * :vertical   — h unchanged across this step (Θ-image is id_h)
+    #   * :horizontal — h advanced via Θ (realize changed across the
+    #                   S-step). Both a and h moved, but the H-side
+    #                   move is what makes it horizontal in §28's sense.
+    h::ListState
+    edge_kind::Symbol
+end
+
+# Backwards-compat constructor for v1.x callers who didn't pass h/edge_kind.
+function TrajectoryStep(step, joint_pos, joint_order, obs_issued, result, mode)
+    TrajectoryStep(step, joint_pos, joint_order, obs_issued, result, mode,
+                   ListState_empty, step == 0 ? :init : :vertical)
 end
 
 # ============================================================
@@ -176,7 +199,7 @@ end
              mode::Symbol=:sequential,
              max_steps::Int=10) -> Vector{TrajectoryStep}
 
-Drive the joint bicomodule `A_joint` from `initial_state` until both
+Drive the joint bicomodule `A_∅` from `initial_state` until both
 per-disease components are terminal (or `max_steps` is reached as a
 safety cap).
 
@@ -202,6 +225,7 @@ The trajectory's `mode` field records the *requested* mode regardless
 of any degeneracies.
 """
 function simulate(patient::Patient;
+                  cc::Union{Symbol,Nothing}=nothing,
                   initial_state::Tuple{Symbol,Symbol}=(:a_D1_initial, :a_D2_initial),
                   mode::Symbol=:sequential,
                   max_steps::Int=10)
@@ -209,14 +233,37 @@ function simulate(patient::Patient;
         error("simulate: mode must be :sequential or :panel, got :$mode")
 
     state = initial_state
+    h = ListState_empty
     trajectory = TrajectoryStep[
         TrajectoryStep(
             0, state, joint_recommendation(state),
             (Symbol[], Symbol[]), (Symbol[], Symbol[]), mode,
+            h, :init,
         ),
     ]
 
-    for step in 1:max_steps
+    # ----------------------------------------------------------------
+    # CC firing (intake) — pure-horizontal step
+    # ----------------------------------------------------------------
+    # If a CC is provided, fire it as the first step: h advances from
+    # ∅ to cc_realize(c), the patient phenotype stays at initial_state.
+    # This is a pure-horizontal motion in ∫A's terms (h moves, a stays).
+    next_step_idx = 1
+    if cc !== nothing
+        _, h_after_cc = cc_fire(cc, h)
+        h = h_after_cc
+        push!(trajectory, TrajectoryStep(
+            next_step_idx, state, joint_recommendation(state),
+            (Symbol[], Symbol[]), (Symbol[], Symbol[]), mode,
+            h, :cc_fire,
+        ))
+        next_step_idx += 1
+    end
+
+    # ----------------------------------------------------------------
+    # Workup loop — vertical / horizontal classification per step
+    # ----------------------------------------------------------------
+    for step in next_step_idx:max_steps
         if _is_joint_terminal(state)
             break
         end
@@ -250,10 +297,20 @@ function simulate(patient::Patient;
             results = (res_D1, res_D2)
         end
 
+        # Classify the H-side movement: Θ-advance computes whether the
+        # S-step changes realize. If h_new == h, the step is purely
+        # vertical (a moved within a fixed fiber). Otherwise h advanced
+        # via Θ — the step has a horizontal component.
+        prev_state = state
+        h_new = theta_advance(h, prev_state, next_state)
+        edge_kind = h_new == h ? :vertical : :horizontal
+
         state = next_state
+        h = h_new
         push!(trajectory, TrajectoryStep(
             step, state, joint_recommendation(state),
             obs_issued, results, mode,
+            h, edge_kind,
         ))
     end
 

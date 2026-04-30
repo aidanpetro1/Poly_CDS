@@ -75,7 +75,17 @@ import .PolyCDS:
     # v1.5 viz layer — Mermaid flowcharts + Catlab WiringDiagrams.
     include(joinpath(@__DIR__, "test_v15_viz.jl"))
 
-    # Joint bicomodule via formal Bicomodule ⊗ — A_joint is a module-level
+    # v1.6.B PR 1 — H-fibration infrastructure (Q toggle, σ, realize, Θ, H).
+    # Tests the path-discriminating + state-quotient duality for H, plus
+    # cc_realize/realize handover coherence.
+    include(joinpath(@__DIR__, "test_v16b_pr1.jl"))
+
+    # v1.6.B PR 2 — comprehensive: fibration + ∫A + DDx + cc_fire +
+    # reindexing + two-level dynamics. β-side (per-fiber strict
+    # Bicomodule) is lazy and not exercised here.
+    include(joinpath(@__DIR__, "test_v16b_pr2.jl"))
+
+    # Joint bicomodule via formal Bicomodule ⊗ — A_∅ is a module-level
     # const constructed in Bicomodule.jl as parallel(A_D1_bicomodule,
     # A_D2_bicomodule). Adds ~9s to the test run (construction ≈ 1.4s,
     # validation ≈ 7.7s on v1.1 carriers; v1.2 free-P costs are similar).
@@ -107,7 +117,7 @@ import .PolyCDS:
     end
 
     @testset "Same final phenotype regardless of mode (sequential vs panel)" begin
-        # Both modes are valid trajectories through A_joint; the cofree-S
+        # Both modes are valid trajectories through A_∅; the cofree-S
         # routing structure is mode-agnostic at the destination level.
         # Mode controls path length and observation ordering, not the
         # phenotype reached.

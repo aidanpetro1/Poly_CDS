@@ -5,9 +5,9 @@ End-to-end demo of the PolyCDS v1.1 architecture:
   * cofree-S as derived universal observations comonoid (per disease)
   * discrete P (v1.1; protocol-on-P deferred to v1.2 — see Bicomodule.jl)
   * 5 hand-crafted phenotypes per disease
-  * **joint via formal Bicomodule ⊗** (A_joint, post-2026-04-28 Poly.jl PR)
+  * **joint via formal Bicomodule ⊗** (A_∅, post-2026-04-28 Poly.jl PR)
   * patient as responder; bicomodule's right coaction recommends orders
-  * simulator drives A_joint with mode=:sequential or :panel
+  * simulator drives A_∅ with mode=:sequential or :panel
 
 Run with:
     julia --project=. examples/demo.jl
@@ -23,7 +23,7 @@ import .PolyCDS:
     p_o1a, p_D1_obs, p_D2_obs, p_obs,
     A_D1_carrier, A_D2_carrier, A_carrier,
     S_D1, S_D2, P_D1, P_D2,
-    A_D1_bicomodule, A_D2_bicomodule, A_joint,
+    A_D1_bicomodule, A_D2_bicomodule, A_∅,
     Patient, Patient_D1, Patient_D2, Patient_neither,
     simulate, print_trajectory
 
@@ -78,7 +78,7 @@ println(" 'extend by length(P-morph) S-steps' rule for sharp_R.)")
 println("\n--- Phenotype carriers (A, per disease and joint) ---\n")
 println("A_D1_carrier (5 phenotypes) = ", A_D1_carrier)
 println("A_D2_carrier (5 phenotypes) = ", A_D2_carrier)
-println("|joint phenotypes|          = ", cardinality(A_joint.carrier.positions))
+println("|joint phenotypes|          = ", cardinality(A_∅.carrier.positions))
 
 # ============================================================
 # 5. Validation — bicomodule axiom = guideline coherence
@@ -91,7 +91,7 @@ print("validate_comonoid(P_D1)             : "); println(validate_comonoid(P_D1)
 print("validate_comonoid(P_D2)             : "); println(validate_comonoid(P_D2))
 print("validate_bicomodule(A_D1_bicomodule): "); println(validate_bicomodule(A_D1_bicomodule))
 print("validate_bicomodule(A_D2_bicomodule): "); println(validate_bicomodule(A_D2_bicomodule))
-print("validate_bicomodule(A_joint)        : "); println(validate_bicomodule(A_joint))
+print("validate_bicomodule(A_∅)        : "); println(validate_bicomodule(A_∅))
 println()
 println("All passing means: the joint guideline is internally coherent —")
 println("result-driven interpretation updates (left coaction) agree with the")
@@ -136,12 +136,12 @@ println("v1.1 architecture summary:")
 println("  S = sub-cofree_comonoid (derived, universal — patient plugs in formally)")
 println("  P = discrete (v1.1; protocol-on-P deferred to v1.2)")
 println("  A = 5 hand-crafted phenotypes per disease")
-println("  A_joint = parallel(A_D1_bicomodule, A_D2_bicomodule)")
+println("  A_∅ = parallel(A_D1_bicomodule, A_D2_bicomodule)")
 println("          = formal Bicomodule ⊗ (categorical ground truth, not")
 println("            orchestration code)")
 println("  Bicomodule axiom = guideline internal coherence")
 println()
-println("Two simulator modes drive the same A_joint:")
+println("Two simulator modes drive the same A_∅:")
 println("  :sequential — one disease at a time, single tests (~3-4 steps)")
 println("  :panel      — both diseases at once, length-2 panel directions")
 println("                when screens are positive (~1-2 steps)")
