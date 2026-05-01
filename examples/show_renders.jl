@@ -1,52 +1,37 @@
 """
-    examples/show_renders.jl
+    examples/show_renders.jl  (v1.6 — V2 master-D)
 
-Exercise every render function and write each output to a file in the
-`renders/` directory. The Mermaid outputs are wrapped in markdown
-fenced blocks (.md files) so they render inline anywhere markdown +
-Mermaid is supported (GitHub, VSCode preview, Obsidian, etc.).
+Exercise the V2 renderers and write each output to `renders/`. Phase 3
+(2026-05-01) removed v1.x renders 1-11 along with their generators; this
+file now produces only V2 master-D artifacts:
+
+    renders/01_differential.md                (Mermaid: D_v2_toy f-graph,
+                                                grouped by D2-state)
+    renders/02_differential_compiled.md       (Mermaid: D_v2_compiled
+                                                from D1+D2 protocols)
+    renders/03_trajectory_v2_d1_sequential.md (Mermaid: V2 simulator
+                                                trace, sequential)
+    renders/04_trajectory_v2_d1_panel.md      (Mermaid: V2 simulator
+                                                trace, panel mode)
 
 Run:
     julia --project=. examples/show_renders.jl
 
-Outputs (relative to repo root):
-    renders/01_d1_protocol_tree.txt          (print_protocol — ASCII)
-    renders/02_d1_compiled.txt               (print_compiled — ASCII)
-    renders/03_joint_summary.txt             (print_joint — ASCII)
-    renders/04_d1_bicomodule.txt             (print_bicomodule — ASCII)
-    renders/05_d1_protocol.md                (mermaid in markdown)
-    renders/06_d1_order_graph.md             (mermaid in markdown)
-    renders/07_d1_overview.md                (combined: workflow + order graph)
-    renders/08_d1_bicomodule.dot             (Catlab WiringDiagram → DOT)
-    renders/09_joint_bicomodule.dot          (Catlab joint → DOT)
-    renders/10_patient_d1_panel_trajectory.txt   (print_trajectory)
-
-To view the .md files inline: open in VSCode (preview), GitHub, or any
-markdown editor with Mermaid support. To render the .dot files:
-
-    dot -Tsvg renders/08_d1_bicomodule.dot -o renders/08_d1_bicomodule.svg
+Preview the .md files in VSCode (Cmd-Shift-V), GitHub, or
+https://mermaid.live for ad-hoc rendering of the Mermaid blocks.
 """
 
 include(joinpath(@__DIR__, "..", "src", "PolyCDS.jl"))
 using .PolyCDS
 
 import .PolyCDS:
-    print_protocol, print_compiled, print_joint, print_bicomodule,
-    markdown_protocol, markdown_order_graph, markdown_overview,
-    catlab_bicomodule, catlab_joint, render_catlab_to_dot,
-    print_trajectory, simulate,
-    D1_protocol, D1_compiled, A_∅, Patient_D1
+    mermaid_differential, mermaid_trajectory_v2,
+    D_v2_toy, toy_v2_workup_state,
+    D_v2_compiled, D_v2_compiled_workup,
+    simulate_v2, Patient_D1
 
 const OUT_DIR = joinpath(@__DIR__, "..", "renders")
 isdir(OUT_DIR) || mkpath(OUT_DIR)
-
-function _write(filename::String, writer::Function)
-    path = joinpath(OUT_DIR, filename)
-    open(path, "w") do io
-        writer(io)
-    end
-    println("  wrote $path")
-end
 
 function _write_string(filename::String, content::String)
     path = joinpath(OUT_DIR, filename)
@@ -56,42 +41,82 @@ function _write_string(filename::String, content::String)
     println("  wrote $path")
 end
 
-println("Writing renders to $OUT_DIR")
+println("Writing V2 renders to $OUT_DIR")
 println()
 
-# 1. Protocol IR tree (ASCII)
-_write("01_d1_protocol_tree.txt", io -> print_protocol(D1_protocol; io=io))
+# 1. D_v2_toy structure (manually-authored 16-position toy)
+_write_string("01_differential.md",
+    """
+    # V2 master-D (D_v2_toy) — transition structure
 
-# 2. Full compiled engine view (ASCII)
-_write("02_d1_compiled.txt", io -> print_compiled(D1_compiled; io=io))
+    The V2 master bicomodule `D : O ⇸ P` for the D1/D2 toy. Each node is
+    a D-position (joint per-disease phenotype tuple) labeled with its
+    workup-state pointer (= recommendation under post-σ readout). Edges
+    are σ event firings drawn from `Σ_obs_v2`. Joint-terminal positions
+    (both diseases at `:a_Dk` or `:a_Dk_absent`) styled in green.
 
-# 3. Joint bicomodule summary (ASCII)
-_write("03_joint_summary.txt", io -> print_joint(A_∅; io=io))
+    Grouped into Mermaid subgraphs by D2-state: each subgraph contains
+    the four D-positions sharing that D2 component, organizing the
+    4×4 grid visually. 16 D-positions, ~32 σ-event transitions.
 
-# 4. Per-disease bicomodule summary (ASCII)
-_write("04_d1_bicomodule.txt", io -> print_bicomodule(:D1; io=io))
+    ```mermaid
+    $(mermaid_differential(D_v2_toy, toy_v2_workup_state;
+                            direction="LR", group_by=p -> p[2]))
+    ```
+    """)
 
-# 5. Markdown with Mermaid: protocol workflow
-_write_string("05_d1_protocol.md", markdown_protocol(D1_protocol))
+# 2. D_v2_compiled structure (from D1+D2 protocols, 25 positions)
+_write_string("02_differential_compiled.md",
+    """
+    # V2 master-D (D_v2_compiled) — compiled from D1+D2 protocols
 
-# 6. Markdown with Mermaid: order graph
-_write_string("06_d1_order_graph.md", markdown_order_graph(D1_compiled, :D1))
+    The Differential produced by `compile_protocol_v2` + `compose_differentials_2`
+    on the existing v1.x `D1_protocol` and `D2_protocol`. Distinct from
+    `D_v2_toy` — preserves the via_o1a/via_o1b distinction, giving 5
+    phenotypes per disease and 25 D-positions.
 
-# 7. Combined markdown overview (workflow + order graph)
-_write_string("07_d1_overview.md", markdown_overview(D1_protocol, D1_compiled))
+    Grouped by D2-state. Larger graph than D_v2_toy; useful for
+    visualizing the full state space.
 
-# 8. Catlab per-disease bicomodule (GraphViz DOT)
-_write("08_d1_bicomodule.dot", io -> render_catlab_to_dot(catlab_bicomodule(:D1); io=io))
+    ```mermaid
+    $(mermaid_differential(D_v2_compiled, D_v2_compiled_workup;
+                            direction="LR", group_by=p -> p[2]))
+    ```
+    """)
 
-# 9. Catlab joint bicomodule (GraphViz DOT)
-_write("09_joint_bicomodule.dot", io -> render_catlab_to_dot(catlab_joint(A_∅); io=io))
+# 3. V2 simulator trajectory (Patient_D1 sequential)
+_traj_seq = simulate_v2(Patient_D1; mode=:sequential)
+_write_string("03_trajectory_v2_d1_sequential.md",
+    """
+    # V2 trajectory — Patient_D1, sequential mode
 
-# 10. Trajectory with the new dir column
-_write("10_patient_d1_panel_trajectory.txt",
-       io -> print_trajectory(simulate(Patient_D1; mode=:panel); io=io))
+    Simulator trace through `D_v2_toy` for `Patient_D1`. Each step shows
+    the D-position and joint workup state; edges are labeled with the σ
+    events fired during that transition.
+
+    ```mermaid
+    $(mermaid_trajectory_v2(_traj_seq))
+    ```
+    """)
+
+# 4. V2 simulator trajectory (Patient_D1 panel)
+_traj_pan = simulate_v2(Patient_D1; mode=:panel)
+_write_string("04_trajectory_v2_d1_panel.md",
+    """
+    # V2 trajectory — Patient_D1, panel mode
+
+    Panel mode advances both non-terminal diseases per step; per-disease
+    panel + screen-positive fires confirm immediately (2 σ in one step).
+    The trajectory reaches the same final state as sequential, in fewer
+    steps.
+
+    ```mermaid
+    $(mermaid_trajectory_v2(_traj_pan))
+    ```
+    """)
 
 println()
-println("done — 10 files written to $OUT_DIR")
+println("done — 4 files written to $OUT_DIR")
 println()
 println("To preview the .md files inline (with rendered Mermaid diagrams):")
 println("  • VSCode: open file → Cmd-Shift-V (or right-click → Open Preview)")

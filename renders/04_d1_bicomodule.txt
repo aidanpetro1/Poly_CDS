@@ -1,5 +1,0 @@
-A_D1 : S_D1 ⇸ P_D1
-  5 phenotypes
-  S-side  : 4 trees in sub-cofree
-  P-side  : 4 orders / 10 morphisms in free-P
-  edges   : 4

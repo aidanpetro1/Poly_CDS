@@ -1,13 +1,12 @@
 """
-    examples/demo.jl  (v1.1)
+    examples/demo.jl  (v1.6 — V2 master-D)
 
-End-to-end demo of the PolyCDS v1.1 architecture:
-  * cofree-S as derived universal observations comonoid (per disease)
-  * discrete P (v1.1; protocol-on-P deferred to v1.2 — see Bicomodule.jl)
-  * 5 hand-crafted phenotypes per disease
-  * **joint via formal Bicomodule ⊗** (A_∅, post-2026-04-28 Poly.jl PR)
-  * patient as responder; bicomodule's right coaction recommends orders
-  * simulator drives A_∅ with mode=:sequential or :panel
+End-to-end demo of the V2 master-D architecture:
+  * `Differential` struct: the master bicomodule `D : O ⇸ P`
+  * `OComonoid(Σ_obs_v2, depth)`: left-base observation comonoid
+  * Joint disease-frame positions; uniform Σ-event directions
+  * `validate_v2_axiom` checks post-σ readout consistency
+  * `simulate_v2` drives D's coactions in `:sequential` or `:panel` mode
 
 Run with:
     julia --project=. examples/demo.jl
@@ -17,133 +16,102 @@ or from REPL:
 
 include(joinpath(@__DIR__, "..", "src", "PolyCDS.jl"))
 using .PolyCDS
-using .PolyCDS.Poly: validate_bicomodule, validate_comonoid, cardinality
 
 import .PolyCDS:
-    p_o1a, p_D1_obs, p_D2_obs, p_obs,
-    A_D1_carrier, A_D2_carrier, A_carrier,
-    S_D1, S_D2, P_D1, P_D2,
-    A_D1_bicomodule, A_D2_bicomodule, A_∅,
+    Differential, OComonoid, O_positions, O_directions_at,
+    Σ_obs_v2,
+    D_v2_toy, toy_v2_workup_state,
+    D_v2_compiled, D_v2_compiled_workup,
+    validate_v2_axiom,
     Patient, Patient_D1, Patient_D2, Patient_neither,
-    simulate, print_trajectory
+    simulate_v2, print_trajectory_v2
 
 println("=" ^ 78)
-println("PolyCDS v1.1 — sub-cofree S, discrete P, phenotype-as-A, formal joint ⊗")
+println("PolyCDS V2 — master-D bicomodule  D : O ⇸ P")
 println("=" ^ 78)
 
 # ============================================================
-# 1. Polynomial structure (compositional)
+# 1. The observation comonoid O
 # ============================================================
 
-println("\n--- Compositional polynomials ---\n")
-println("p_o1a (atomic)              = ", p_o1a)
-println("p_D1_obs = coproduct(o1a, o1b) = ", p_D1_obs)
-println("p_D2_obs                    = ", p_D2_obs)
-println("p_obs = p_D1_obs * p_D2_obs = ", p_obs)
+println("\n--- O = cofree(Q, depth), the encounter-log comonoid ---\n")
+O = D_v2_toy.O
+println("O.Σ           = ", sort(collect(O.Σ)))
+println("O.depth       = ", O.depth)
+println("|Σ_obs_v2|    = ", length(Σ_obs_v2))
 println()
-println("|positions(p_obs)|          = ", cardinality(p_obs.positions))
+println("(O-positions are encounter logs in Σ^{≤depth}. O-directions at log w")
+println(" are Σ if |w| < depth, else empty. Materialized as `OComonoid` —")
+println(" parameter struct; full Poly.jl-backed comonoid deferred to v1.7+.)")
 
 # ============================================================
-# 2. Sub-cofree S — derived from p_obs, trimmed to the protocol
+# 2. The master Differential D_v2_toy
 # ============================================================
 
-println("\n--- Sub-cofree observations comonoid (S, per disease) ---\n")
-println("S_D1 = sub-cofree of cofree(p_D1_obs)")
-println("       carrier positions    = ", cardinality(S_D1.carrier.positions))
-println("S_D2 = sub-cofree of cofree(p_D2_obs)")
-println("       carrier positions    = ", cardinality(S_D2.carrier.positions))
+println("\n--- D_v2_toy (manually-authored 4-state-per-disease toy) ---\n")
+println("|D-positions|    = ", length(D_v2_toy.positions),
+        "   (4 D1-phenotypes × 4 D2-phenotypes; via_o1a/via_o1b collapsed)")
+println("|D.f| (non-id)   = ", length(D_v2_toy.f))
+println("|D.emit|         = ", length(D_v2_toy.emit))
+println("|P_positions|    = ", length(D_v2_toy.P_positions))
+
+print("\nvalidate_v2_axiom(D_v2_toy, toy_v2_workup_state) = ")
+println(validate_v2_axiom(D_v2_toy, toy_v2_workup_state))
+
+# ============================================================
+# 3. The compiled Differential D_v2_compiled (from D{1,2}_protocol)
+# ============================================================
+
+println("\n--- D_v2_compiled (compiled from D1+D2 protocols, 5 phenotypes/disease) ---\n")
+println("|D-positions|    = ", length(D_v2_compiled.positions),
+        "   (5 D1-phenotypes × 5 D2-phenotypes; via_o1a/via_o1b distinct)")
+println("|D.Σ|            = ", length(D_v2_compiled.O.Σ))
+println("|D.f| (non-id)   = ", length(D_v2_compiled.f))
+
+print("\nvalidate_v2_axiom(D_v2_compiled, D_v2_compiled_workup) = ")
+println(validate_v2_axiom(D_v2_compiled, D_v2_compiled_workup))
 println()
-println("(Sub-cofree contains only the protocol-relevant trees — 4 per")
-println(" disease — making bicomodule construction tractable. We trade")
-println(" cofree's universal property for tractability; see")
-println(" project_polycds_coherence.md for the rationale.)")
+println("(Both D_v2_toy and D_v2_compiled satisfy the axiom by construction,")
+println(" since emit is built via post-σ readout. The check would catch any")
+println(" authoring drift from the convention.)")
 
 # ============================================================
-# 3. Discrete P (per disease)
-# ============================================================
-
-println("\n--- Discrete order comonoid P (per disease, v1.1) ---\n")
-println("P_D1 carrier = ", P_D1.carrier)
-println("P_D2 carrier = ", P_D2.carrier)
-println()
-println("(P is discrete in v1.1 — orders are atomic, no protocol structure.")
-println(" The 'planned pathway' lives in mbar_R per A-direction. v1.2 will")
-println(" promote P to a free protocol-category once we have the matching")
-println(" 'extend by length(P-morph) S-steps' rule for sharp_R.)")
-
-# ============================================================
-# 4. Phenotype carriers
-# ============================================================
-
-println("\n--- Phenotype carriers (A, per disease and joint) ---\n")
-println("A_D1_carrier (5 phenotypes) = ", A_D1_carrier)
-println("A_D2_carrier (5 phenotypes) = ", A_D2_carrier)
-println("|joint phenotypes|          = ", cardinality(A_∅.carrier.positions))
-
-# ============================================================
-# 5. Validation — bicomodule axiom = guideline coherence
-# ============================================================
-
-println("\n--- Validation ---\n")
-print("validate_comonoid(S_D1)             : "); println(validate_comonoid(S_D1))
-print("validate_comonoid(S_D2)             : "); println(validate_comonoid(S_D2))
-print("validate_comonoid(P_D1)             : "); println(validate_comonoid(P_D1))
-print("validate_comonoid(P_D2)             : "); println(validate_comonoid(P_D2))
-print("validate_bicomodule(A_D1_bicomodule): "); println(validate_bicomodule(A_D1_bicomodule))
-print("validate_bicomodule(A_D2_bicomodule): "); println(validate_bicomodule(A_D2_bicomodule))
-print("validate_bicomodule(A_∅)        : "); println(validate_bicomodule(A_∅))
-println()
-println("All passing means: the joint guideline is internally coherent —")
-println("result-driven interpretation updates (left coaction) agree with the")
-println("planned-order pathway (right coaction). The joint axioms hold by")
-println("Poly.jl's formal Bicomodule ⊗ being faithful to the categorical")
-println("definition; we don't hand-verify them ourselves.")
-
-# ============================================================
-# 6. Patient trajectories — sequential vs panel
+# 4. Patient trajectories — sequential vs panel
 # ============================================================
 
 function run_demo(label, patient, mode)
     println("\n--- $label ---\n")
     println("Patient: $(patient.label)   Mode: $mode")
-    traj = simulate(patient; mode=mode)
-    print_trajectory(traj)
-    final_state = traj[end].joint_pos
-    println("\nFinal joint phenotype: $(final_state)   ($(length(traj)) trajectory entries)")
+    traj = simulate_v2(patient; mode=mode)
+    print_trajectory_v2(traj)
+    final = traj[end]
+    println("\nFinal D-position: $(final.p)   workup: $(final.workup_state)   ($(length(traj)) steps)")
 end
 
 println("\n" * "=" ^ 78)
 println("Patient trajectories — sequential vs panel")
 println("=" ^ 78)
 
-# Same patient, two modes — shows the path-length contrast.
 run_demo("Patient_D1, mode=:sequential",  Patient_D1,      :sequential)
 run_demo("Patient_D1, mode=:panel",       Patient_D1,      :panel)
-
-# Patient_D2 — D1 ruled out at screen, D2 confirmed via panel.
 run_demo("Patient_D2, mode=:sequential",  Patient_D2,      :sequential)
 run_demo("Patient_D2, mode=:panel",       Patient_D2,      :panel)
-
-# Patient_neither — both screens neg, panel degenerates to sequential.
-run_demo("Patient_neither, mode=:panel (degenerates to seq on screen-neg)",
-         Patient_neither, :panel)
+run_demo("Patient_neither, mode=:panel",  Patient_neither, :panel)
 
 println("\n" * "=" ^ 78)
 println("Demo complete.")
 println("=" ^ 78)
 println()
-println("v1.1 architecture summary:")
-println("  S = sub-cofree_comonoid (derived, universal — patient plugs in formally)")
-println("  P = discrete (v1.1; protocol-on-P deferred to v1.2)")
-println("  A = 5 hand-crafted phenotypes per disease")
-println("  A_∅ = parallel(A_D1_bicomodule, A_D2_bicomodule)")
-println("          = formal Bicomodule ⊗ (categorical ground truth, not")
-println("            orchestration code)")
-println("  Bicomodule axiom = guideline internal coherence")
+println("V2 architecture summary:")
+println("  D : O ⇸ P  — single master bicomodule (the `Differential`)")
+println("  O          — cofree(Q, depth), encounter-log comonoid (OComonoid)")
+println("  P          — joint protocol comonoid (per-disease P_d via tensor)")
+println("  D-positions — joint per-disease epistemic+phenotype tags")
+println("  D-directions — atomic Σ_obs_v2 events; sharp_L = path concatenation (implicit)")
+println("  emit        — post-σ readout: emit_p(σ) = workup_state(f_p(σ))")
+println("  V2 axiom    — emit_p table consistent with workup_state ∘ f")
 println()
-println("Two simulator modes drive the same A_∅:")
-println("  :sequential — one disease at a time, single tests (~3-4 steps)")
-println("  :panel      — both diseases at once, length-2 panel directions")
-println("                when screens are positive (~1-2 steps)")
-println("Both reach the same final joint phenotype; mode controls path length")
-println("and observation ordering, not the destination.")
+println("Two simulator modes:")
+println("  :sequential — one disease per step, exactly one σ firing")
+println("  :panel      — both non-terminal diseases per step; per-disease")
+println("                screen-positive fires confirm too (2 σ in one step)")

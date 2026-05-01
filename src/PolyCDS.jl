@@ -2,35 +2,27 @@
     PolyCDS
 
 Clinical Decision Support (CDS) modeled as polynomial functors and bicomodules,
-built on top of `Poly.jl`. The architecture has three intertwined threads, each
-of which is a distinct categorical structure on the same observation polynomial
-`p_obs = Σ_obs y^{Results(obs)}`:
+built on top of `Poly.jl`. The architecture is V2 master-D (settled 2026-05-01):
 
-  1. **Observations comonoid `S`** — `discrete_comonoid` on the event set
-     for v1 (with the upgrade path to `cofree_comonoid(p_obs, depth)` flagged
-     for a richer v1.1).
+A single bicomodule `D : O ⇸ P` represents the joint clinical decision support:
 
-  2. **Patient coalgebra** — a state machine `X → p_obs(X)` representing the
-     patient as a result-producing system. Trajectories of patient state are
-     observation-result histories.
+  * `O = cofree(Q, depth)` — the observation comonoid (encounter-log,
+    sequence-based; alphabet `Σ_obs_v2`). `OComonoid` struct in `Differential.jl`.
 
-  3. **FHIR copresheaf** — the patient's data lives in a copresheaf `F : C → Set`
-     on the FHIR schema category. Not wired in v1; the patient state is just a
-     tiny `struct`. v2 swaps in the copresheaf.
+  * `P = ⊗_d P_d` — the joint protocol comonoid; recommendation alphabet drawn
+    from the per-disease P_d objects (free protocol-categories per v1.2).
 
-The CDS guideline is a `Bicomodule` `A : S ⇸ P` whose left coaction routes
-observation events into interpretations and whose right coaction recommends
-diagnostic orders.
+  * `D` (the `Differential` struct) — D-positions are joint disease-frame states
+    (per-disease epistemic + phenotype tags); D-directions are atomic Σ events;
+    `f` is the position-forward of λ_L; `emit` follows post-σ readout
+    (`emit_p(σ) = workup_state(f_p(σ))`).
 
-Compositional design (per the user's request, 2026-04-27):
+The chief authoring surface is per-disease `Protocol` IR (in `Protocol.jl`),
+parsed from markdown via `ProtocolDoc.jl`, compiled via `ProtocolCompileV2.jl`
+into `PerDiseaseV2` records and composed into a joint `Differential`.
 
-  * Each observation is its own polynomial (atomic building block).
-  * Each disease's observation polynomial is a coproduct `+` of its
-    observation polynomials (clinician picks at each step).
-  * The joint observation polynomial is the Cartesian product `×` of the
-    per-disease polynomials (independent advancement of D1 and D2).
-  * Per-disease assessment carriers are also combined by `×`, giving 16
-    joint interpretation positions (4 D1 × 4 D2).
+The simulator (`SimulateV2.jl`) drives D's coactions via Σ events; the renderer
+(`Render.jl`) produces Mermaid flowcharts of D and trajectories.
 
 See `examples/demo.jl` for the runnable end-to-end story.
 """
@@ -46,22 +38,15 @@ using .Poly
 # Re-export the Poly names users will reach for.
 export Poly
 
-# Component modules.
-include("Vocabulary.jl")
-include("ProblemVocabulary.jl")  # v1.6.B — Σ_prob, Q_ops, ListState
-include("Polynomials.jl")
-include("Protocol.jl")          # IR types + per-disease Protocol consts
-include("ProtocolCompile.jl")   # compile_protocol → CompiledProtocol; D{k}_compiled
-include("ProtocolDoc.jl")       # markdown ProtocolDoc parser → Protocol struct
-include("Carrier.jl")           # A_Dk_carrier sourced from D{k}_compiled
-include("Bicomodule.jl")        # bicomodules built on top of compiled output
-include("History.jl")           # v1.6.B — patient-history category H (path + state-quotient views)
-include("Realize.jl")           # v1.6.B — cc_realize / realize maps for D1, D2
-include("Theta.jl")             # v1.6.B — derived S→H quotient functor Θ
-include("Fiber.jl")             # v1.6.B PR 2 — fiber predicate, ∫A, FiberedAssessment
-include("DDx.jl")               # v1.6.B PR 2 — DDx projection from ∫A
-include("Render.jl")            # text-mode wiring-diagram prints
-include("Patient.jl")
-include("Simulate.jl")
+# Component modules (V2 master-D architecture, post Phase 3 cleanup 2026-05-01).
+include("Vocabulary.jl")          # observation/order/disease symbol tables
+include("Polynomials.jl")         # per-disease p_obs (used by Protocol IR)
+include("Protocol.jl")            # Protocol IR types + per-disease Protocol consts
+include("ProtocolDoc.jl")         # markdown ProtocolDoc parser → Protocol struct
+include("Differential.jl")        # V2 master-D: OComonoid + Differential struct + axiom validator + toy
+include("ProtocolCompileV2.jl")   # V2 compiler: Protocol IR → Differential (per-disease + compose)
+include("Render.jl")              # V2 renderers: mermaid_differential + mermaid_trajectory_v2
+include("Patient.jl")             # Patient coalgebra (respond)
+include("SimulateV2.jl")          # V2 simulator over Differential
 
 end # module PolyCDS

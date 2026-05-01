@@ -1,34 +1,22 @@
 # ============================================================
-# ProtocolDoc parser  (v1.4 — markdown + YAML)
+# ProtocolDoc parser — markdown + YAML → Protocol IR
 # ============================================================
 #
-# Parse a clinician-authored protocol from a markdown file with embedded
-# fenced YAML blocks into a `Protocol` IR struct (defined in Protocol.jl).
-# The compiler in ProtocolCompile.jl then consumes that struct unchanged.
+# Parse a clinician-authored protocol from a markdown file with
+# embedded fenced YAML blocks into a `Protocol` struct.
 #
-# Format spec (settled 2026-04-29 — see project_polycds_authoring.md and
-# the `protocols/` examples):
+# Block layout:
+#   * YAML front-matter (`---`-delimited): protocol_id, title, version,
+#     authors, disease, description
+#   * Fenced YAML blocks:
+#       yaml-vocab        — observations (required)
+#       yaml-orders       — orders (required)
+#       yaml-conclusions  — conclusions (required)
+#       yaml-phenotypes   — phenotype display/description (optional)
+#       yaml-protocol     — the workflow tree (required)
 #
-#   * YAML front-matter (between `---` markers at file head): protocol_id,
-#     title, version, authors, disease, description.
-#   * Fenced YAML blocks tagged by language:
-#       ```yaml-vocab           — observations vocabulary (required)
-#       ```yaml-orders          — orders vocabulary (required)
-#       ```yaml-conclusions     — conclusions vocabulary (required)
-#       ```yaml-phenotypes      — phenotype display/description (optional)
-#       ```yaml-protocol        — the workflow tree (required)
-#   * Markdown body around the blocks carries clinical narrative.
-#
-# Implementation notes:
-#   * Implicit observation-to-step binding (per Q1 sign-off): each
-#     ProtocolStep declares `order: order_<obs>`; the engine recovers
-#     the observation symbol via `obs_from_order`.
-#   * Cross-reference validation runs at parse time (per Q6): unknown
-#     orders, conclusions, phenotypes, or result symbols all fail the
-#     parse with a precise diagnostic.
-#   * FHIR fields (loinc, icd10, fhir.resource) are preserved on the
-#     `ProtocolMetadata` carried by `Protocol` (per Q5); the engine
-#     compiler ignores them.
+# Cross-reference validation runs at parse time; FHIR-style attributes
+# (loinc, icd10, fhir.resource) are preserved in `ProtocolMetadata`.
 
 using YAML
 
@@ -308,7 +296,6 @@ function parse_protocol(path::String)::Protocol
     disease = Symbol(frontmatter["disease"])
     p_obs = lookup_p_obs(disease)
 
-    # Assemble metadata
     metadata = ProtocolMetadata(
         get(frontmatter, "title", "")       |> string,
         get(frontmatter, "version", "")     |> string,
